@@ -1,0 +1,44 @@
+spring:
+  application:
+    name: workspace-backend
+  datasource:
+    # Local-dev defaults match docker-compose.yml. Override with env vars anywhere else.
+    url: ${WORKSPACE_DB_URL:jdbc:postgresql://localhost:5432/workspace}
+    username: ${WORKSPACE_DB_USER:workspace}
+    password: ${WORKSPACE_DB_PASSWORD:workspace}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+
+server:
+  forward-headers-strategy: framework
+  servlet:
+    session:
+      timeout: 8h
+      cookie:
+        http-only: true
+        same-site: lax
+        # Set WORKSPACE_COOKIE_SECURE=true everywhere except localhost.
+        secure: ${WORKSPACE_COOKIE_SECURE:false}
+
+springdoc:
+  api-docs:
+    # Off by default; the OpenApiExportTest turns it on to regenerate docs/api/openapi.yaml.
+    enabled: ${WORKSPACE_OPENAPI_ENABLED:false}
+
+workspace:
+  login:
+    max-failures: 5
+    window: 15m
+  bootstrap:
+    # First-user bootstrap: used only when app_user is empty. Never logged.
+    email: ${WORKSPACE_BOOTSTRAP_EMAIL:}
+    password: ${WORKSPACE_BOOTSTRAP_PASSWORD:}
+    display-name: ${WORKSPACE_BOOTSTRAP_DISPLAY_NAME:Owner}
