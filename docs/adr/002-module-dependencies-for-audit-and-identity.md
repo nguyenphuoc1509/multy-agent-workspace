@@ -1,4 +1,4 @@
-# ADR-002: allow project -> audit and document -> identity
+# ADR-002: allow project -> audit, document -> identity, identity -> audit
 
 Status: accepted (owner, 2026-11-11). Supersedes the dependency matrix of brief section 4 for these two edges only.
 
@@ -18,3 +18,8 @@ OLDER version, but the approve transaction asserts `version.parent_version_id ==
 A rollback draft would therefore always fail approval. Proposed default for 1c: relax the assertion to
 "the parent is the current approved version OR the version was created by rollback", stored explicitly; to be decided
 before 1c starts.
+
+Amendment (step 1e): `identity` may also depend on `audit` (published API only), so that LOGIN_SUCCEEDED and
+LOGIN_FAILED are written by the identity module (brief section 13). `audit` still depends only on `shared`, so there
+is no cycle. Login audit rows are written in their own transaction (`LoginAuditor`) because a failed login throws.
+

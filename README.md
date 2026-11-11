@@ -1,13 +1,14 @@
-# workspace-backend (Milestone 0)
+# workspace-backend (Milestones 0-1)
 
-Backend for the multi-agent software development workspace. Implements **M0** of
-`BE-agent-brief.txt` (v1.0): skeleton, session login, CSRF, projects, Flyway V1, ArchUnit, Testcontainers.
+Backend for the multi-agent software development workspace. Implements **M0** (skeleton, session login, CSRF,
+projects) and **M1** (documents core, no AI) of `BE-agent-brief.txt` (v1.0).
 
-> **Status: written but NOT yet compiled or run.** See `docs/reports/M0-report.md` for exactly what was and
-> was not verified. The first thing to do is run the build below and send back any failures.
+> **Status:** `mvn verify` runs on every push and pull request in GitHub Actions (`.github/workflows/ci.yml`,
+> Testcontainers + real PostgreSQL). Reports: `docs/reports/M0-report.md` (historical, written before the first
+> build) and `docs/reports/M1-report.md`. Next: M2 (credentials, roles, agents).
 
 ## Requirements
-- JDK 25 (set in `pom.xml`; the brief asks for the current LTS supported by the chosen Spring Boot)
+- JDK 21 (`java.version` in `pom.xml`; CI uses the same)
 - Maven 3.9+
 - Docker (local PostgreSQL via compose, and Testcontainers for the tests)
 
@@ -53,4 +54,4 @@ mvn verify          # needs Docker; real PostgreSQL through Testcontainers, no H
 
 ## Layout
 `com.workspace.<module>.{web,application,domain,infrastructure,published}`; other modules may only use
-`published`. M0 modules: `shared`, `identity`, `project`.
+`published`. Modules so far: `shared`, `identity`, `project`, `audit`, `event`, `document`.

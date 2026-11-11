@@ -6,6 +6,9 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: write   # lets the pull-request job commit a regenerated docs/api/openapi.yaml
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -18,6 +21,8 @@ jobs:
       TZ: UTC
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref }}
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -25,6 +30,20 @@ jobs:
           cache: maven
       - name: mvn verify
         run: mvn -B -ntp verify
+      # OpenApiExportTest rewrites docs/api/openapi.yaml during mvn verify.
+      - name: Commit regenerated docs/api/openapi.yaml (pull requests only)
+        if: github.event_name == 'pull_request'
+        run: |
+          if ! git diff --quiet -- docs/api/openapi.yaml; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add docs/api/openapi.yaml
+            git commit -m "chore: regenerate docs/api/openapi.yaml [skip ci]"
+            git push
+          fi
+      - name: Fail if docs/api/openapi.yaml is out of date (main and manual runs)
+        if: github.event_name != 'pull_request'
+        run: git diff --exit-code -- docs/api/openapi.yaml
       - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@v4
