@@ -57,6 +57,10 @@ public class DocumentVersion {
     @Column(name = "source_message_id", updatable = false)
     private UUID sourceMessageId;
 
+    /** True when the parent is not the approved version at creation time (rollback / re-edit of a rejected one). */
+    @Column(name = "is_rollback", nullable = false, updatable = false)
+    private boolean rollback;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -83,6 +87,15 @@ public class DocumentVersion {
         return v;
     }
 
+    public static DocumentVersion rollbackDraft(UUID documentId, int versionNo, String content, AuthorType authorType,
+                                                String authorRef, UUID parentVersionId, String changeSummary,
+                                                UUID sourceMessageId, Instant now) {
+        DocumentVersion v = draft(documentId, versionNo, content, authorType, authorRef, parentVersionId,
+                changeSummary, sourceMessageId, now);
+        v.rollback = true;
+        return v;
+    }
+
     /** Null arguments leave the field unchanged. The hash is recomputed on every content edit. */
     public void editDraft(String newContent, String newChangeSummary) {
         requireStatus(VersionStatus.DRAFT);
@@ -98,6 +111,11 @@ public class DocumentVersion {
     /** Throws 409 INVALID_STATE unless the version is still a DRAFT (checked before optimistic-lock headers). */
     public void ensureDraft() {
         requireStatus(VersionStatus.DRAFT);
+    }
+
+    /** Throws 409 INVALID_STATE unless the version is IN_REVIEW. */
+    public void ensureInReview() {
+        requireStatus(VersionStatus.IN_REVIEW);
     }
 
     public void submit(Instant now) {
@@ -144,6 +162,7 @@ public class DocumentVersion {
     public UUID getParentVersionId() { return parentVersionId; }
     public String getChangeSummary() { return changeSummary; }
     public UUID getSourceMessageId() { return sourceMessageId; }
+    public boolean isRollback() { return rollback; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getSubmittedAt() { return submittedAt; }
 }

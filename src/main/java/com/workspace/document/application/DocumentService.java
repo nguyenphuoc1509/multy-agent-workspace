@@ -1,13 +1,17 @@
 package com.workspace.document.application;
 
 import com.workspace.audit.published.AuditLog;
+import com.workspace.document.domain.Approval;
 import com.workspace.document.domain.AuthorType;
+import com.workspace.document.domain.Decision;
 import com.workspace.document.domain.Document;
 import com.workspace.document.domain.DocumentVersion;
 import com.workspace.document.domain.VersionStatus;
+import com.workspace.document.infrastructure.ApprovalRepository;
 import com.workspace.document.infrastructure.DocumentRepository;
 import com.workspace.document.infrastructure.DocumentVersionRepository;
 import com.workspace.document.published.DocumentType;
+import com.workspace.event.published.EventPublisher;
 import com.workspace.project.published.ProjectAccess;
 import com.workspace.project.published.ProjectRole;
 import com.workspace.shared.published.ApiException;
@@ -20,6 +24,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
@@ -39,20 +44,26 @@ public class DocumentService {
     public static final int MAX_LIMIT = 200;
 
     private static final Set<ProjectRole> WRITERS = Set.of(ProjectRole.OWNER);
+    private static final Set<ProjectRole> REVIEWERS = Set.of(ProjectRole.OWNER, ProjectRole.APPROVER);
     private static final Set<VersionStatus> OPEN = EnumSet.of(VersionStatus.DRAFT, VersionStatus.IN_REVIEW);
 
     private final DocumentRepository documents;
     private final DocumentVersionRepository versions;
     private final ProjectAccess access;
+    private final ApprovalRepository approvals;
     private final AuditLog audit;
+    private final EventPublisher events;
     private final Clock clock;
 
-    public DocumentService(DocumentRepository documents, DocumentVersionRepository versions, ProjectAccess access,
-                           AuditLog audit, Clock clock) {
+    public DocumentService(DocumentRepository documents, DocumentVersionRepository versions,
+                           ApprovalRepository approvals, ProjectAccess access, AuditLog audit,
+                           EventPublisher events, Clock clock) {
         this.documents = documents;
         this.versions = versions;
+        this.approvals = approvals;
         this.access = access;
         this.audit = audit;
+        this.events = events;
         this.clock = clock;
     }
 
@@ -151,9 +162,11 @@ public class DocumentService {
 
         UUID parentId = d.getCurrentApprovedVersionId();
         String base = null;
+        boolean rollback = false;
         if (fromVersionId != null) {
             DocumentVersion from = versions.findByIdAndDocumentId(fromVersionId, documentId)
                     .orElseThrow(ApiException::notFound);
+            rollback = !from.getId().equals(d.getCurrentApprovedVersionId());
             parentId = from.getId();
             base = from.getContent();
         } else if (parentId != null) {
@@ -162,8 +175,11 @@ public class DocumentService {
         String body = content != null ? content : (base != null ? base : "");
 
         int versionNo = versions.maxVersionNo(documentId) + 1;
-        DocumentVersion v = versions.save(DocumentVersion.draft(documentId, versionNo, body, AuthorType.HUMAN,
-                userId.toString(), parentId, changeSummary, null, now()));
+        DocumentVersion v = versions.save(rollback
+                ? DocumentVersion.rollbackDraft(documentId, versionNo, body, AuthorType.HUMAN, userId.toString(),
+                        parentId, changeSummary, null, now())
+                : DocumentVersion.draft(documentId, versionNo, body, AuthorType.HUMAN, userId.toString(),
+                        parentId, changeSummary, null, now()));
         audit.record(projectId, AuditLog.ACTOR_USER, userId.toString(), "VERSION_CREATED", "DOCUMENT_VERSION",
                 v.getId(), null, versionAudit(v));
         return VersionView.of(v, d.getType(), true);
@@ -216,7 +232,7 @@ public class DocumentService {
      */
     @Transactional
     public VersionView submitVersion(UUID userId, UUID versionId) {
-        Loaded l = loadForWrite(userId, versionId);
+        Loaded l = loadForWrite(userId, versionId, WRITERS);
         DocumentVersion v = l.version();
         v.ensureDraft();
         if (v.getContent().isBlank()) {
@@ -226,13 +242,16 @@ public class DocumentService {
         v.submit(now());
         audit.record(l.projectId(), AuditLog.ACTOR_USER, userId.toString(), "VERSION_SUBMITTED", "DOCUMENT_VERSION",
                 v.getId(), map("status", "DRAFT"), map("status", "IN_REVIEW", "contentHash", v.getContentHash()));
+        events.publish(l.projectId(), "DOCUMENT_VERSION", v.getId(), "DocumentVersionSubmitted", AuditLog.ACTOR_USER,
+                userId.toString(), map("documentId", l.document().getId(), "versionId", v.getId(),
+                        "versionNo", v.getVersionNo(), "contentHash", v.getContentHash()));
         return VersionView.of(v, l.document().getType(), true);
     }
 
     /** DRAFT -> DISCARDED (frees the "one open version" slot). Not a DRAFT -> 409. */
     @Transactional
     public VersionView discardVersion(UUID userId, UUID versionId) {
-        Loaded l = loadForWrite(userId, versionId);
+        Loaded l = loadForWrite(userId, versionId, WRITERS);
         DocumentVersion v = l.version();
         v.discard();
         audit.record(l.projectId(), AuditLog.ACTOR_USER, userId.toString(), "VERSION_DISCARDED", "DOCUMENT_VERSION",
@@ -240,13 +259,90 @@ public class DocumentService {
         return VersionView.of(v, l.document().getType(), true);
     }
 
+    /**
+     * Approve transaction (brief section 6). Serialised per document by the row lock taken in loadForWrite.
+     * Errors: not IN_REVIEW 409 INVALID_STATE; hash mismatch 409 STALE_CONTENT (+currentHash);
+     * prerequisite missing 422 GATE_NOT_SATISFIED; version not based on the approved one (and not a rollback)
+     * 409 INVALID_STATE. Role: OWNER or APPROVER; the approver is always the session user.
+     */
+    @Transactional
+    public DecisionResult approveVersion(UUID userId, UUID versionId, String expectedHash, String comment) {
+        Loaded l = loadForWrite(userId, versionId, REVIEWERS);
+        Document d = l.document();
+        DocumentVersion v = l.version();
+
+        v.ensureInReview();
+        if (!v.getContentHash().equals(expectedHash)) {
+            throw new ApiException(HttpStatus.CONFLICT, "STALE_CONTENT",
+                    "The content changed since you reviewed it", Map.of("currentHash", v.getContentHash()));
+        }
+        d.getType().prerequisite().ifPresent(pre -> {
+            if (!documents.existsByProjectIdAndTypeAndCurrentApprovedVersionIdIsNotNull(l.projectId(), pre)) {
+                throw new ApiException(HttpStatus.valueOf(422), "GATE_NOT_SATISFIED",
+                        "A prerequisite document has no approved version",
+                        Map.of("missing", List.of(map("documentType", pre.name(), "reason", "NO_APPROVED_VERSION"))));
+            }
+        });
+        UUID current = d.getCurrentApprovedVersionId();
+        if (!v.isRollback() && !Objects.equals(v.getParentVersionId(), current)) {
+            throw new ApiException(HttpStatus.CONFLICT, "INVALID_STATE",
+                    "This version is not based on the current approved version");
+        }
+
+        UUID supersededId = null;
+        if (current != null) {
+            DocumentVersion old = versions.findById(current).orElseThrow(ApiException::notFound);
+            old.supersede();
+            supersededId = old.getId();
+        }
+        v.approve();
+        versions.flush(); // the DB trigger on document requires the version to be APPROVED before the pointer moves
+        d.pointTo(v.getId());
+        Approval a = approvals.save(Approval.of(v.getId(), d.getType().gateCode(), userId, Decision.APPROVED,
+                v.getContentHash(), comment, now()));
+        documents.flush();
+
+        audit.record(l.projectId(), AuditLog.ACTOR_USER, userId.toString(), "VERSION_APPROVED", "DOCUMENT_VERSION",
+                v.getId(), map("status", "IN_REVIEW"),
+                map("status", "APPROVED", "contentHash", v.getContentHash(), "gateCode", a.getGateCode(),
+                        "supersededVersionId", supersededId));
+        events.publish(l.projectId(), "DOCUMENT_VERSION", v.getId(), "DocumentVersionApproved", AuditLog.ACTOR_USER,
+                userId.toString(), map("documentId", d.getId(), "documentType", d.getType().name(),
+                        "versionId", v.getId(), "versionNo", v.getVersionNo(), "contentHash", v.getContentHash(),
+                        "supersededVersionId", supersededId));
+        return new DecisionResult(VersionView.of(v, d.getType(), true), supersededId, ApprovalView.of(a));
+    }
+
+    /** IN_REVIEW -> REJECTED. A comment is required. Records an approval row with decision REJECTED. */
+    @Transactional
+    public DecisionResult rejectVersion(UUID userId, UUID versionId, String comment) {
+        if (comment == null || comment.isBlank()) {
+            throw ApiException.validation("A comment is required to reject a version");
+        }
+        Loaded l = loadForWrite(userId, versionId, REVIEWERS);
+        Document d = l.document();
+        DocumentVersion v = l.version();
+
+        v.reject(); // 409 INVALID_STATE unless IN_REVIEW
+        Approval a = approvals.save(Approval.of(v.getId(), d.getType().gateCode(), userId, Decision.REJECTED,
+                v.getContentHash(), comment, now()));
+        versions.flush();
+
+        audit.record(l.projectId(), AuditLog.ACTOR_USER, userId.toString(), "VERSION_REJECTED", "DOCUMENT_VERSION",
+                v.getId(), map("status", "IN_REVIEW"), map("status", "REJECTED", "contentHash", v.getContentHash()));
+        events.publish(l.projectId(), "DOCUMENT_VERSION", v.getId(), "DocumentVersionRejected", AuditLog.ACTOR_USER,
+                userId.toString(), map("documentId", d.getId(), "versionId", v.getId(),
+                        "versionNo", v.getVersionNo(), "contentHash", v.getContentHash()));
+        return new DecisionResult(VersionView.of(v, d.getType(), true), null, ApprovalView.of(a));
+    }
+
     private record Loaded(UUID projectId, Document document, DocumentVersion version) {}
 
     /** Authorise (OWNER), then lock the document row, then read the version fresh. */
-    private Loaded loadForWrite(UUID userId, UUID versionId) {
+    private Loaded loadForWrite(UUID userId, UUID versionId, Set<ProjectRole> allowed) {
         UUID documentId = versions.findDocumentId(versionId).orElseThrow(ApiException::notFound);
         UUID projectId = documents.findProjectId(documentId).orElseThrow(ApiException::notFound);
-        access.requireRole(projectId, userId, WRITERS);
+        access.requireRole(projectId, userId, allowed);
         Document d = documents.findByIdForUpdate(documentId).orElseThrow(ApiException::notFound);
         DocumentVersion v = versions.findById(versionId).orElseThrow(ApiException::notFound);
         return new Loaded(projectId, d, v);
@@ -276,7 +372,7 @@ public class DocumentService {
 
     private static Map<String, Object> versionAudit(DocumentVersion v) {
         return map("versionNo", v.getVersionNo(), "status", v.getStatus().name(), "contentHash", v.getContentHash(),
-                "parentVersionId", v.getParentVersionId());
+                "parentVersionId", v.getParentVersionId(), "rollback", v.isRollback());
     }
 
     private static Map<String, Object> map(Object... keyValues) {

@@ -99,4 +99,15 @@ public class DocumentController {
         VersionResponse v = VersionResponse.from(documents.discardVersion(currentUser.require().id(), versionId));
         return ResponseEntity.ok().eTag(v.contentHash()).body(v);
     }
+
+    @PostMapping("/document-versions/{versionId}/approve")
+    public DecisionResponse approve(@PathVariable UUID versionId, @Valid @RequestBody ApproveVersionRequest body) {
+        return DecisionResponse.from(documents.approveVersion(currentUser.require().id(), versionId,
+                body.expectedHash(), body.comment()));
+    }
+
+    @PostMapping("/document-versions/{versionId}/reject")
+    public DecisionResponse reject(@PathVariable UUID versionId, @Valid @RequestBody RejectVersionRequest body) {
+        return DecisionResponse.from(documents.rejectVersion(currentUser.require().id(), versionId, body.comment()));
+    }
 }
