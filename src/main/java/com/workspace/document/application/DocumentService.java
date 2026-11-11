@@ -6,10 +6,12 @@ import com.workspace.document.domain.AuthorType;
 import com.workspace.document.domain.Decision;
 import com.workspace.document.domain.Document;
 import com.workspace.document.domain.DocumentVersion;
+import com.workspace.document.domain.VersionComment;
 import com.workspace.document.domain.VersionStatus;
 import com.workspace.document.infrastructure.ApprovalRepository;
 import com.workspace.document.infrastructure.DocumentRepository;
 import com.workspace.document.infrastructure.DocumentVersionRepository;
+import com.workspace.document.infrastructure.VersionCommentRepository;
 import com.workspace.document.published.DocumentType;
 import com.workspace.event.published.EventPublisher;
 import com.workspace.project.published.ProjectAccess;
@@ -51,16 +53,18 @@ public class DocumentService {
     private final DocumentVersionRepository versions;
     private final ProjectAccess access;
     private final ApprovalRepository approvals;
+    private final VersionCommentRepository comments;
     private final AuditLog audit;
     private final EventPublisher events;
     private final Clock clock;
 
     public DocumentService(DocumentRepository documents, DocumentVersionRepository versions,
-                           ApprovalRepository approvals, ProjectAccess access, AuditLog audit,
-                           EventPublisher events, Clock clock) {
+                           ApprovalRepository approvals, VersionCommentRepository comments, ProjectAccess access,
+                           AuditLog audit, EventPublisher events, Clock clock) {
         this.documents = documents;
         this.versions = versions;
         this.approvals = approvals;
+        this.comments = comments;
         this.access = access;
         this.audit = audit;
         this.events = events;
@@ -228,7 +232,7 @@ public class DocumentService {
 
     /**
      * DRAFT -> IN_REVIEW. Not a DRAFT -> 409. Content must be non-empty (422 INVALID_CONTENT).
-     * TODO(1d): API_CONTRACT must also parse as a valid OpenAPI document (422 INVALID_CONTRACT).
+     * An API_CONTRACT must also pass the structural OpenAPI check (422 INVALID_CONTRACT, errors with line numbers).
      */
     @Transactional
     public VersionView submitVersion(UUID userId, UUID versionId) {
@@ -238,6 +242,15 @@ public class DocumentService {
         if (v.getContent().isBlank()) {
             throw new ApiException(HttpStatus.valueOf(422), "INVALID_CONTENT",
                     "A version with empty content cannot be submitted");
+        }
+        if (l.document().getType() == DocumentType.API_CONTRACT) {
+            List<ContractValidator.Issue> problems = ContractValidator.validate(v.getContent());
+            if (!problems.isEmpty()) {
+                throw new ApiException(HttpStatus.valueOf(422), "INVALID_CONTRACT",
+                        "The API contract is not a valid OpenAPI document",
+                        Map.of("errors", problems.stream()
+                                .map(p -> map("line", p.line(), "message", p.message())).toList()));
+            }
         }
         v.submit(now());
         audit.record(l.projectId(), AuditLog.ACTOR_USER, userId.toString(), "VERSION_SUBMITTED", "DOCUMENT_VERSION",
@@ -334,6 +347,47 @@ public class DocumentService {
                 userId.toString(), map("documentId", d.getId(), "versionId", v.getId(),
                         "versionNo", v.getVersionNo(), "contentHash", v.getContentHash()));
         return new DecisionResult(VersionView.of(v, d.getType(), true), null, ApprovalView.of(a));
+    }
+
+    /**
+     * Comments on a version, oldest first. Cursor = base64url("<createdAt>|<id>") of the last item.
+     * Any member may read them.
+     */
+    @Transactional(readOnly = true)
+    public PageResponse<CommentView> listComments(UUID userId, UUID versionId, String cursor, Integer limitParam) {
+        UUID documentId = versions.findDocumentId(versionId).orElseThrow(ApiException::notFound);
+        UUID projectId = documents.findProjectId(documentId).orElseThrow(ApiException::notFound);
+        access.requireMember(projectId, userId);
+        int limit = limit(limitParam);
+        List<VersionComment> rows;
+        if (cursor == null || cursor.isBlank()) {
+            rows = comments.findByDocumentVersionIdOrderByCreatedAtAscIdAsc(versionId, PageRequest.of(0, limit + 1));
+        } else {
+            DocumentCursor c = DocumentCursor.decode(cursor);
+            rows = comments.pageAfter(versionId, c.createdAt(), c.id(), limit + 1);
+        }
+        boolean hasMore = rows.size() > limit;
+        List<VersionComment> page = hasMore ? rows.subList(0, limit) : rows;
+        List<CommentView> items = page.stream().map(CommentView::of).toList();
+        String next = hasMore
+                ? new DocumentCursor(page.get(page.size() - 1).getCreatedAt(), page.get(page.size() - 1).getId()).encode()
+                : null;
+        return new PageResponse<>(items, next);
+    }
+
+    /**
+     * Add a human comment to a version in any status. OWNER and APPROVER may comment (default taken from the
+     * brief's role table: VIEWER is read-only). The audit row keeps the length, never the text.
+     */
+    @Transactional
+    public CommentView addComment(UUID userId, UUID versionId, String body) {
+        UUID documentId = versions.findDocumentId(versionId).orElseThrow(ApiException::notFound);
+        UUID projectId = documents.findProjectId(documentId).orElseThrow(ApiException::notFound);
+        access.requireRole(projectId, userId, REVIEWERS);
+        VersionComment c = comments.save(VersionComment.byHuman(versionId, userId, body.trim(), now()));
+        audit.record(projectId, AuditLog.ACTOR_USER, userId.toString(), "COMMENT_ADDED", "VERSION_COMMENT", c.getId(),
+                null, map("documentVersionId", versionId, "bodyLength", c.getBody().length()));
+        return CommentView.of(c);
     }
 
     private record Loaded(UUID projectId, Document document, DocumentVersion version) {}

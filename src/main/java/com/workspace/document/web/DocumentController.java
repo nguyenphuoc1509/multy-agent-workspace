@@ -110,4 +110,19 @@ public class DocumentController {
     public DecisionResponse reject(@PathVariable UUID versionId, @Valid @RequestBody RejectVersionRequest body) {
         return DecisionResponse.from(documents.rejectVersion(currentUser.require().id(), versionId, body.comment()));
     }
+
+    @GetMapping("/document-versions/{versionId}/comments")
+    public PageResponse<CommentResponse> comments(@PathVariable UUID versionId,
+                                                  @RequestParam(required = false) String cursor,
+                                                  @RequestParam(required = false) Integer limit) {
+        PageResponse<com.workspace.document.application.CommentView> page =
+                documents.listComments(currentUser.require().id(), versionId, cursor, limit);
+        return new PageResponse<>(page.items().stream().map(CommentResponse::from).toList(), page.nextCursor());
+    }
+
+    @PostMapping("/document-versions/{versionId}/comments")
+    @ResponseStatus(HttpStatus.CREATED)
+    public CommentResponse addComment(@PathVariable UUID versionId, @Valid @RequestBody CreateCommentRequest body) {
+        return CommentResponse.from(documents.addComment(currentUser.require().id(), versionId, body.body()));
+    }
 }

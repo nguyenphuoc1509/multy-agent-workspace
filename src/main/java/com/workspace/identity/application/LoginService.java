@@ -19,12 +19,15 @@ public class LoginService {
     private final AppUserRepository users;
     private final PasswordEncoder encoder;
     private final LoginThrottle throttle;
+    private final LoginAuditor auditor;
     private final String dummyHash;
 
-    public LoginService(AppUserRepository users, PasswordEncoder encoder, LoginThrottle throttle) {
+    public LoginService(AppUserRepository users, PasswordEncoder encoder, LoginThrottle throttle,
+                        LoginAuditor auditor) {
         this.users = users;
         this.encoder = encoder;
         this.throttle = throttle;
+        this.auditor = auditor;
         // used to equalise timing when the email is unknown
         this.dummyHash = encoder.encode("not-a-real-password");
     }
@@ -50,10 +53,12 @@ public class LoginService {
 
         if (!ok) {
             throttle.recordFailure(key);
+            auditor.failed(user.map(AppUser::getId).orElse(null), key);
             throw ApiException.unauthenticated("Invalid email or password");
         }
         throttle.reset(key);
         AppUser u = user.get();
+        auditor.succeeded(u.getId());
         return new CurrentUser(u.getId(), u.getEmail(), u.getDisplayName());
     }
 }
