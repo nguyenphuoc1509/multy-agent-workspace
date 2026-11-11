@@ -31,6 +31,8 @@ import org.springframework.test.web.servlet.ResultActions;
 class DocumentApprovalApiTest extends IntegrationTestBase {
 
     private static final String PW = "correct-horse-battery";
+    /** Single-line flow YAML: a structurally valid contract that needs no JSON escaping. */
+    private static final String VALID_CONTRACT = "{openapi: 3.1.0, info: {title: T, version: 1.0.0}, paths: {}}";
 
     private String createProject(Auth auth) throws Exception {
         String body = mvc.perform(as(post("/api/v1/projects"), auth).contentType(MediaType.APPLICATION_JSON)
@@ -187,14 +189,14 @@ class DocumentApprovalApiTest extends IntegrationTestBase {
                 .andExpect(jsonPath("$.missing[0].reason").value("NO_APPROVED_VERSION"));
         assertThat(statusOf(o, arch)).isEqualTo("IN_REVIEW");
 
-        String api = id(createDoc(o, pid, "API_CONTRACT", "openapi: 3.1.0"), "$.openVersionId");
+        String api = id(createDoc(o, pid, "API_CONTRACT", VALID_CONTRACT), "$.openVersionId");
         submit(o, api);
-        approve(o, api, ContentHash.of("openapi: 3.1.0")).andExpect(status().is(422))
+        approve(o, api, ContentHash.of(VALID_CONTRACT)).andExpect(status().is(422))
                 .andExpect(jsonPath("$.missing[0].documentType").value("ARCHITECTURE"));
 
         approved(o, pid, "REQUIREMENTS", "reqs");
         approve(o, arch, ContentHash.of("arch")).andExpect(status().isOk());
-        approve(o, api, ContentHash.of("openapi: 3.1.0")).andExpect(status().isOk())
+        approve(o, api, ContentHash.of(VALID_CONTRACT)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.approval.gateCode").value("API_CONTRACT_APPROVED"));
     }
 
