@@ -111,6 +111,49 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/DocumentResponse"
+  /api/v1/projects/{projectId}/credentials:
+    get:
+      tags:
+      - credential-controller
+      operationId: list_2
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PageResponseCredentialResponse"
+    post:
+      tags:
+      - credential-controller
+      operationId: add
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddCredentialRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CredentialResponse"
   /api/v1/documents/{documentId}/versions:
     get:
       tags:
@@ -307,6 +350,25 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/DecisionResponse"
+  /api/v1/credentials/{credentialId}/revoke:
+    post:
+      tags:
+      - credential-controller
+      operationId: revoke
+      parameters:
+      - name: credentialId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CredentialResponse"
   /api/v1/auth/logout:
     post:
       tags:
@@ -548,6 +610,43 @@ components:
         createdAt:
           type: string
           format: date-time
+    AddCredentialRequest:
+      type: object
+      properties:
+        label:
+          type: string
+          maxLength: 100
+          minLength: 0
+        provider:
+          type: string
+          maxLength: 40
+          minLength: 0
+        apiKey:
+          type: string
+          maxLength: 512
+          minLength: 8
+      required:
+      - apiKey
+      - label
+      - provider
+    CredentialResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        label:
+          type: string
+        provider:
+          type: string
+        keyLast4:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        revokedAt:
+          type: string
+          format: date-time
     CreateVersionRequest:
       type: object
       properties:
@@ -764,6 +863,15 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/DocumentResponse"
+        nextCursor:
+          type: string
+    PageResponseCredentialResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CredentialResponse"
         nextCursor:
           type: string
     PageResponseVersionSummaryResponse:

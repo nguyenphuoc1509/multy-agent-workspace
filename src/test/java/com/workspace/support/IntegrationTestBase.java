@@ -38,6 +38,8 @@ public abstract class IntegrationTestBase {
         registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
         registry.add("spring.datasource.username", POSTGRES::getUsername);
         registry.add("spring.datasource.password", POSTGRES::getPassword);
+        registry.add("workspace.security.master-key", () -> "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="); // test-only key
+        registry.add("workspace.llm.fake", () -> "true");
     }
 
     @Autowired protected MockMvc mvc;
