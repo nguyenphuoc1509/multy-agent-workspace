@@ -28,4 +28,8 @@ public interface DocumentVersionRepository extends JpaRepository<DocumentVersion
 
     List<DocumentVersion> findByDocumentIdAndVersionNoLessThanOrderByVersionNoDesc(UUID documentId, int before,
                                                                                    Pageable pageable);
+
+    /** Scalar lookup (does not load the entity) so the document row can be locked before the version is read. */
+    @Query("select v.documentId from DocumentVersion v where v.id = :id")
+    Optional<UUID> findDocumentId(@Param("id") UUID id);
 }

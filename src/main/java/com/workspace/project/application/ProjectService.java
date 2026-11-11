@@ -1,5 +1,6 @@
 package com.workspace.project.application;
 
+import com.workspace.audit.published.AuditLog;
 import com.workspace.project.domain.Project;
 import com.workspace.project.domain.ProjectMember;
 import com.workspace.project.infrastructure.ProjectMemberRepository;
@@ -11,6 +12,7 @@ import com.workspace.shared.published.ApiException;
 import com.workspace.shared.published.PageResponse;
 import java.time.Clock;
 import java.time.temporal.ChronoUnit;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -30,12 +32,15 @@ public class ProjectService {
     private final ProjectMemberRepository members;
     private final ProjectAccess access;
     private final Clock clock;
+    private final AuditLog audit;
 
-    public ProjectService(ProjectRepository projects, ProjectMemberRepository members, ProjectAccess access, Clock clock) {
+    public ProjectService(ProjectRepository projects, ProjectMemberRepository members, ProjectAccess access,
+                          Clock clock, AuditLog audit) {
         this.projects = projects;
         this.members = members;
         this.access = access;
         this.clock = clock;
+        this.audit = audit;
     }
 
     @Transactional
@@ -44,8 +49,9 @@ public class ProjectService {
         Project p = projects.save(Project.create(name.trim(), description, dailyTokenBudget, userId,
                 clock.instant().truncatedTo(ChronoUnit.MICROS)));
         members.save(new ProjectMember(p.getId(), userId, ProjectRole.OWNER));
+        audit.record(p.getId(), AuditLog.ACTOR_USER, userId.toString(), "PROJECT_CREATED", "PROJECT", p.getId(),
+                null, snapshot(p));
         return view(p, ProjectRole.OWNER);
-        // TODO(M4/M1): audit PROJECT_CREATED once audit_log exists (V9) -- see M0 report, open question 1
     }
 
     @Transactional(readOnly = true)
@@ -88,10 +94,21 @@ public class ProjectService {
     public ProjectView update(UUID projectId, UUID userId, String name, String description, Long dailyTokenBudget) {
         ProjectMembership m = access.requireRole(projectId, userId, Set.of(ProjectRole.OWNER));
         Project p = projects.findById(projectId).orElseThrow(ApiException::notFound);
+        Map<String, Object> before = snapshot(p);
         if (name != null) p.rename(name.trim());
         if (description != null) p.changeDescription(description);
         if (dailyTokenBudget != null) p.changeDailyTokenBudget(dailyTokenBudget);
+        audit.record(projectId, AuditLog.ACTOR_USER, userId.toString(), "PROJECT_UPDATED", "PROJECT", projectId,
+                before, snapshot(p));
         return view(p, m.role());
+    }
+
+    private static Map<String, Object> snapshot(Project p) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("name", p.getName());
+        m.put("description", p.getDescription());
+        m.put("dailyTokenBudget", p.getDailyTokenBudget());
+        return m;
     }
 
     private static ProjectView view(Project p, ProjectRole role) {

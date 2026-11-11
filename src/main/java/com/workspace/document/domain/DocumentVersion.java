@@ -95,6 +95,11 @@ public class DocumentVersion {
         }
     }
 
+    /** Throws 409 INVALID_STATE unless the version is still a DRAFT (checked before optimistic-lock headers). */
+    public void ensureDraft() {
+        requireStatus(VersionStatus.DRAFT);
+    }
+
     public void submit(Instant now) {
         requireStatus(VersionStatus.DRAFT);
         this.status = VersionStatus.IN_REVIEW;

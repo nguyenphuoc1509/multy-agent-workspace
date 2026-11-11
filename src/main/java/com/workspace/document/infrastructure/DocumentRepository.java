@@ -44,4 +44,8 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
     List<Document> pageAfter(@Param("projectId") UUID projectId, @Param("typeName") String typeName,
                              @Param("createdAt") Instant createdAt, @Param("id") UUID id,
                              @Param("limit") int limit);
+
+    /** Scalar lookup (does not load the entity) so authorisation can run before the row lock. */
+    @Query("select d.projectId from Document d where d.id = :id")
+    Optional<UUID> findProjectId(@Param("id") UUID id);
 }

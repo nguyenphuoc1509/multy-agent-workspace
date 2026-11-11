@@ -35,8 +35,8 @@ class ArchitectureTest {
         ALLOWED.put("audit", Set.of("shared"));
         ALLOWED.put("event", Set.of("shared"));
         ALLOWED.put("identity", Set.of("shared"));
-        ALLOWED.put("project", Set.of("identity", "shared"));
-        ALLOWED.put("document", Set.of("project", "audit", "event", "shared"));
+        ALLOWED.put("project", Set.of("identity", "audit", "shared")); // ADR-002: project writes audit rows
+        ALLOWED.put("document", Set.of("identity", "project", "audit", "event", "shared")); // ADR-002: controllers need CurrentUserProvider
         ALLOWED.put("credential", Set.of("project", "audit", "shared"));
         ALLOWED.put("agent", Set.of("project", "credential", "audit", "event", "shared"));
         ALLOWED.put("attention", Set.of("project", "event", "shared"));

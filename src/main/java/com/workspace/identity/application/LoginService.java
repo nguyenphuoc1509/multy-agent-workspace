@@ -9,7 +9,6 @@ import java.util.Locale;
 import java.util.Optional;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class LoginService {
@@ -34,7 +33,6 @@ public class LoginService {
         return email.trim().toLowerCase(Locale.ROOT);
     }
 
-    @Transactional(readOnly = true)
     public CurrentUser login(String rawEmail, String password) {
         String key = normaliseEmail(rawEmail);
         throttle.checkAllowed(key);
