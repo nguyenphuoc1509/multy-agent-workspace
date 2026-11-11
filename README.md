@@ -33,7 +33,12 @@ The application and tests use UTC as the JVM default time zone. This avoids Post
 | `WORKSPACE_COOKIE_SECURE` | `false` | set `true` everywhere except localhost |
 | `WORKSPACE_OPENAPI_ENABLED` | `false` | exposes `/v3/api-docs*` (the export test enables it itself) |
 
-(`WORKSPACE_MASTER_KEY` arrives with M2 and will fail fast at startup when missing.)
+| `WORKSPACE_MASTER_KEY` | none (**required**) | encrypts provider API keys (AES-256-GCM); the app refuses to start without it |
+| `WORKSPACE_LLM_FAKE` | `false` | `true` = scripted fake provider, no network (demos without a real key) |
+
+Generate a master key once and keep it out of git: `openssl rand -base64 32`
+(PowerShell: `[Convert]::ToBase64String((1..32 | % { Get-Random -Maximum 256 }))`).
+Losing it makes stored API keys unrecoverable; they must be added again.
 
 ## Test
 ```bash

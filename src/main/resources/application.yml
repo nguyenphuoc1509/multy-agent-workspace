@@ -42,3 +42,9 @@ workspace:
     email: ${WORKSPACE_BOOTSTRAP_EMAIL:}
     password: ${WORKSPACE_BOOTSTRAP_PASSWORD:}
     display-name: ${WORKSPACE_BOOTSTRAP_DISPLAY_NAME:Owner}
+  security:
+    # 32 random bytes, base64 (openssl rand -base64 32). Never in the database or the repository. The app refuses to start without it.
+    master-key: ${WORKSPACE_MASTER_KEY:}
+  llm:
+    # true = scripted FakeLlmProvider, no network (tests, demos without a real key)
+    fake: ${WORKSPACE_LLM_FAKE:false}
