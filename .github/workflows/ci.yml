@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest   # Docker is preinstalled: Testcontainers starts real PostgreSQL 16
+    timeout-minutes: 20
+    env:
+      TZ: UTC
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'   # keep equal to <java.version> in pom.xml
+          cache: maven
+      - name: mvn verify
+        run: mvn -B -ntp verify
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: |
+            target/surefire-reports/
+            target/failsafe-reports/
+          if-no-files-found: ignore
+      - name: Upload generated OpenAPI
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: openapi
+          path: docs/api/openapi.yaml
+          if-no-files-found: ignore
