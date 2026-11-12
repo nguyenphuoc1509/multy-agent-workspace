@@ -49,7 +49,7 @@ public abstract class IntegrationTestBase {
     /** Clean after (not before) each test so a fresh context's first-user bootstrap sees an empty table. */
     @AfterEach
     void cleanDatabase() {
-        jdbc.execute("TRUNCATE project_member, project, app_user CASCADE");
+        jdbc.execute("TRUNCATE project_member, project, app_user, context_snapshot CASCADE");
     }
 
     protected record Auth(MockHttpSession session, Cookie xsrf) {}

@@ -34,6 +34,9 @@ springdoc:
     enabled: ${WORKSPACE_OPENAPI_ENABLED:false}
 
 workspace:
+  context:
+    # Used when an agent has no params.maxContextTokens (chars/4 heuristic)
+    default-max-tokens: 100000
   login:
     max-failures: 5
     window: 15m

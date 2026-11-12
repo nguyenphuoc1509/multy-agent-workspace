@@ -11,6 +11,8 @@ pointing "down" the existing order (no cycles).
 - Sending a message creates a run in the SAME transaction (brief section 10), and `run` depends on `conversation`,
   so the send use case lives in `run` and calls the `ConversationWriter` port. Computed conversation fields
   (active run, staleness) are supplied by `run` through the `ConversationDecorator` port defined in `conversation`.
+- `context` defines the `ConversationHistorySource` port and may depend on `identity` and `project` (its preview
+  controller authorises like agents do). `conversation` implements the port, so `conversation -> context`.
 - Further edges are recorded in this ADR when added: `run -> project` (daily token budget), `run -> identity`.
 
 ## Consequences
