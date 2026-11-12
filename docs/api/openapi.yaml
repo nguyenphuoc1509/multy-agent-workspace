@@ -6,6 +6,44 @@ servers:
 - url: http://localhost
   description: Generated server url
 paths:
+  /api/v1/runs/{runId}/retry:
+    post:
+      tags:
+      - run-controller
+      operationId: retry
+      parameters:
+      - name: runId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/RunResponse"
+  /api/v1/runs/{runId}/cancel:
+    post:
+      tags:
+      - run-controller
+      operationId: cancel
+      parameters:
+      - name: runId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/RunResponse"
   /api/v1/roles/{roleId}/config-versions:
     get:
       tags:
@@ -523,6 +561,61 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/CredentialResponse"
+  /api/v1/conversations/{conversationId}/messages:
+    get:
+      tags:
+      - conversation-controller
+      operationId: messages
+      parameters:
+      - name: conversationId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: afterSeq
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PageResponseMessageResponse"
+    post:
+      tags:
+      - run-controller
+      operationId: send
+      parameters:
+      - name: conversationId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendMessageRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SendMessageResponse"
   /api/v1/auth/logout:
     post:
       tags:
@@ -707,11 +800,68 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/AgentResponse"
+  /api/v1/runs/{runId}:
+    get:
+      tags:
+      - run-controller
+      operationId: get_2
+      parameters:
+      - name: runId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/RunResponse"
+  /api/v1/runs/{runId}/stream:
+    get:
+      tags:
+      - run-controller
+      operationId: stream
+      parameters:
+      - name: runId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            text/event-stream:
+              schema:
+                $ref: "#/components/schemas/SseEmitter"
+  /api/v1/runs/{runId}/snapshot:
+    get:
+      tags:
+      - run-controller
+      operationId: snapshot
+      parameters:
+      - name: runId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SnapshotView"
   /api/v1/roles/{roleId}:
     get:
       tags:
       - role-controller
-      operationId: get_2
+      operationId: get_3
       parameters:
       - name: roleId
         in: path
@@ -726,11 +876,71 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/RoleResponse"
+  /api/v1/projects/{projectId}/usage:
+    get:
+      tags:
+      - run-controller
+      operationId: usage
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: date
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/Usage"
+  /api/v1/projects/{projectId}/runs:
+    get:
+      tags:
+      - run-controller
+      operationId: list_5
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: cursor
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PageResponseRunResponse"
   /api/v1/projects/{projectId}/conversations:
     get:
       tags:
       - conversation-controller
-      operationId: list_5
+      operationId: list_6
       parameters:
       - name: projectId
         in: path
@@ -778,7 +988,7 @@ paths:
     get:
       tags:
       - document-controller
-      operationId: get_3
+      operationId: get_4
       parameters:
       - name: documentId
         in: path
@@ -797,7 +1007,7 @@ paths:
     get:
       tags:
       - conversation-controller
-      operationId: get_4
+      operationId: get_5
       parameters:
       - name: conversationId
         in: path
@@ -812,37 +1022,6 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/ConversationResponse"
-  /api/v1/conversations/{conversationId}/messages:
-    get:
-      tags:
-      - conversation-controller
-      operationId: messages
-      parameters:
-      - name: conversationId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: afterSeq
-        in: query
-        required: false
-        schema:
-          type: integer
-          format: int32
-      - name: limit
-        in: query
-        required: false
-        schema:
-          type: integer
-          format: int32
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/PageResponseMessageResponse"
   /api/v1/agents/{agentId}/context-preview:
     get:
       tags:
@@ -870,6 +1049,67 @@ paths:
                 $ref: "#/components/schemas/ContextPreviewResponse"
 components:
   schemas:
+    RunResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        agentId:
+          type: string
+          format: uuid
+        conversationId:
+          type: string
+          format: uuid
+        triggerMessageId:
+          type: string
+          format: uuid
+        snapshotId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+          - QUEUED
+          - RUNNING
+          - SUCCEEDED
+          - FAILED
+          - BLOCKED
+          - CANCELLED
+        blockReason:
+          type: string
+          enum:
+          - MISSING_APPROVED_DOC
+          - CONTEXT_TOO_LARGE
+          - CREDENTIAL_REVOKED
+          - BUDGET_EXCEEDED
+          - AGENT_DISABLED
+          - RUN_LIMIT_EXCEEDED
+        errorCode:
+          type: string
+        attempt:
+          type: integer
+          format: int32
+        model:
+          type: string
+        inputTokens:
+          type: integer
+          format: int32
+        outputTokens:
+          type: integer
+          format: int32
+        messageId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        startedAt:
+          type: string
+          format: date-time
+        finishedAt:
+          type: string
+          format: date-time
     ContextDocument:
       type: object
       properties:
@@ -1372,6 +1612,48 @@ components:
           minLength: 0
       required:
       - expectedHash
+    SendMessageRequest:
+      type: object
+      properties:
+        content:
+          type: string
+          minLength: 1
+        clientRequestId:
+          type: string
+          format: uuid
+      required:
+      - clientRequestId
+      - content
+    Message:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        conversationId:
+          type: string
+          format: uuid
+        seq:
+          type: integer
+          format: int32
+        role:
+          type: string
+          enum:
+          - USER
+          - AGENT
+          - SYSTEM
+        content:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    SendMessageResponse:
+      type: object
+      properties:
+        message:
+          $ref: "#/components/schemas/Message"
+        run:
+          $ref: "#/components/schemas/RunResponse"
     LoginRequest:
       type: object
       properties:
@@ -1479,6 +1761,59 @@ components:
           format: uuid
         isEnabled:
           type: boolean
+    SseEmitter:
+      type: object
+      properties:
+        timeout:
+          type: integer
+          format: int64
+    Item:
+      type: object
+      properties:
+        documentVersionId:
+          type: string
+          format: uuid
+        documentType:
+          type: string
+          enum:
+          - REQUIREMENTS
+          - ARCHITECTURE
+          - API_CONTRACT
+          - ADR
+        versionNo:
+          type: integer
+          format: int32
+        contentHash:
+          type: string
+        inclusionMode:
+          type: string
+    SnapshotView:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        assemblerVersion:
+          type: string
+        tokenEstimate:
+          type: integer
+          format: int32
+        lastMessageSeq:
+          type: integer
+          format: int32
+        missingDocumentTypes:
+          type: array
+          items:
+            type: string
+        dependencyRunIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Item"
     PageResponseConfigVersionResponse:
       type: object
       properties:
@@ -1495,6 +1830,30 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ProjectResponse"
+        nextCursor:
+          type: string
+    Usage:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        inputTokens:
+          type: integer
+          format: int64
+        outputTokens:
+          type: integer
+          format: int64
+        dailyTokenBudget:
+          type: integer
+          format: int64
+    PageResponseRunResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/RunResponse"
         nextCursor:
           type: string
     PageResponseRoleResponse:

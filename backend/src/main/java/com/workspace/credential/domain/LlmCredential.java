@@ -74,6 +74,8 @@ public class LlmCredential {
     public UUID getProjectId() { return projectId; }
     public String getLabel() { return label; }
     public String getProvider() { return provider; }
+    public byte[] getEncryptedKey() { return encryptedKey; }
+    public int getKeyVersion() { return keyVersion; }
     public String getKeyLast4() { return keyLast4; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getRevokedAt() { return revokedAt; }

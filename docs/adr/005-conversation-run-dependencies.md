@@ -18,3 +18,7 @@ pointing "down" the existing order (no cycles).
 ## Consequences
 Rule 6 stays intact (`run`, `llm`, `context`, `conversation` never reach `workflow`). Ports are used only where a
 dependency would otherwise point the wrong way.
+
+## Addendum (M3c)
+
+`run` additionally depends on `identity` (CurrentUserProvider) and `project` (ProjectAccess, ProjectBudgets port). `run` implements `ConversationDecorator` (conversation stays unaware of run). The credential key is decrypted only through the `CredentialKeys` port, per provider call; revoked or missing credentials yield no key and the run is BLOCKED (`CREDENTIAL_REVOKED`).

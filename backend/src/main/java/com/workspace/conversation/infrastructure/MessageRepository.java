@@ -13,6 +13,8 @@ public interface MessageRepository extends JpaRepository<Message, UUID> {
 
     Optional<Message> findByConversationIdAndClientRequestId(UUID conversationId, UUID clientRequestId);
 
+    Optional<Message> findByAgentRunId(UUID agentRunId);
+
     @Query("select m from Message m where m.conversationId = :cid and m.seq > :afterSeq order by m.seq asc")
     List<Message> after(@Param("cid") UUID conversationId, @Param("afterSeq") int afterSeq, Pageable page);
 
