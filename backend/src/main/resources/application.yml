@@ -37,6 +37,14 @@ workspace:
   context:
     # Used when an agent has no params.maxContextTokens (chars/4 heuristic)
     default-max-tokens: 100000
+  run:
+    concurrency: 2
+    poll-ms: 1000
+    max-retries: 3
+    retry-backoff-ms: 1000
+    default-max-output-tokens: 4096
+    default-max-run-seconds: 300
+    max-message-chars: 20000
   login:
     max-failures: 5
     window: 15m

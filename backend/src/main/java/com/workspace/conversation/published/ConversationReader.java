@@ -10,6 +10,9 @@ public interface ConversationReader {
 
     Optional<MessageInfo> findMessage(UUID messageId);
 
+    /** The AGENT message a run produced, if it succeeded. */
+    Optional<MessageInfo> findByAgentRun(UUID agentRunId);
+
     /** The last {@code count} messages with seq <= upToSeq, oldest first. */
     List<MessageInfo> recentMessages(UUID conversationId, int upToSeq, int count);
 }

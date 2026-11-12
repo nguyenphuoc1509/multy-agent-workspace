@@ -2,7 +2,12 @@ package com.workspace.llm.adapter.anthropic;
 
 import com.workspace.llm.published.ApiKey;
 import com.workspace.llm.published.KeyValidation;
+import com.workspace.llm.published.LlmException;
 import com.workspace.llm.published.LlmProvider;
+import com.workspace.llm.published.StreamListener;
+import com.workspace.llm.published.StreamRequest;
+import com.workspace.llm.published.StreamResult;
+import java.util.function.BooleanSupplier;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -51,5 +56,10 @@ public class AnthropicProvider implements LlmProvider {
         } catch (IOException | RuntimeException e) {
             return KeyValidation.UNAVAILABLE; // never include the exception text: it could echo request details
         }
+    }
+
+    @Override
+    public StreamResult stream(StreamRequest request, ApiKey key, StreamListener listener, BooleanSupplier shouldAbort) {
+        throw new LlmException(LlmException.Kind.PERMANENT, "STREAMING_NOT_IMPLEMENTED"); // arrives in M3d
     }
 }

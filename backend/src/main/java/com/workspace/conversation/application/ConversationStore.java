@@ -50,6 +50,12 @@ class ConversationStore implements ConversationReader, ConversationWriter {
 
     @Override
     @Transactional(readOnly = true)
+    public Optional<MessageInfo> findByAgentRun(UUID agentRunId) {
+        return messages.findByAgentRunId(agentRunId).map(ConversationStore::info);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<MessageInfo> recentMessages(UUID conversationId, int upToSeq, int count) {
         List<MessageInfo> latest = new java.util.ArrayList<>(messages
                 .latestUpTo(conversationId, upToSeq, PageRequest.of(0, Math.max(1, count))).stream()
