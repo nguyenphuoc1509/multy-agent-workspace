@@ -843,6 +843,31 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/PageResponseMessageResponse"
+  /api/v1/agents/{agentId}/context-preview:
+    get:
+      tags:
+      - context-controller
+      operationId: preview
+      parameters:
+      - name: agentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: conversationId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ContextPreviewResponse"
 components:
   schemas:
     ContextDocument:
@@ -1615,4 +1640,49 @@ components:
           items:
             $ref: "#/components/schemas/MessageResponse"
         nextCursor:
+          type: string
+    ContextPreviewResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PreviewItem"
+        tokenEstimate:
+          type: integer
+          format: int32
+        blockers:
+          type: array
+          items:
+            $ref: "#/components/schemas/PreviewBlocker"
+        missingDocumentTypes:
+          type: array
+          items:
+            type: string
+    PreviewBlocker:
+      type: object
+      properties:
+        reason:
+          type: string
+        documentType:
+          type: string
+    PreviewItem:
+      type: object
+      properties:
+        documentType:
+          type: string
+          enum:
+          - REQUIREMENTS
+          - ARCHITECTURE
+          - API_CONTRACT
+          - ADR
+        versionId:
+          type: string
+          format: uuid
+        versionNo:
+          type: integer
+          format: int32
+        contentHash:
+          type: string
+        mode:
           type: string
