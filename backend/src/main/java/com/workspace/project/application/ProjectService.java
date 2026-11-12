@@ -6,6 +6,7 @@ import com.workspace.project.domain.ProjectMember;
 import com.workspace.project.infrastructure.ProjectMemberRepository;
 import com.workspace.project.infrastructure.ProjectRepository;
 import com.workspace.project.published.ProjectAccess;
+import com.workspace.project.published.ProjectCreated;
 import com.workspace.project.published.ProjectMembership;
 import com.workspace.project.published.ProjectRole;
 import com.workspace.shared.published.ApiException;
@@ -19,6 +20,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,14 +35,17 @@ public class ProjectService {
     private final ProjectAccess access;
     private final Clock clock;
     private final AuditLog audit;
+    private final ApplicationEventPublisher publisher;
 
     public ProjectService(ProjectRepository projects, ProjectMemberRepository members, ProjectAccess access,
-                          Clock clock, AuditLog audit) {
+                          Clock clock, AuditLog audit,
+                          ApplicationEventPublisher publisher) {
         this.projects = projects;
         this.members = members;
         this.access = access;
         this.clock = clock;
         this.audit = audit;
+        this.publisher = publisher;
     }
 
     @Transactional
@@ -51,6 +56,7 @@ public class ProjectService {
         members.save(new ProjectMember(p.getId(), userId, ProjectRole.OWNER));
         audit.record(p.getId(), AuditLog.ACTOR_USER, userId.toString(), "PROJECT_CREATED", "PROJECT", p.getId(),
                 null, snapshot(p));
+        publisher.publishEvent(new ProjectCreated(p.getId(), userId));
         return view(p, ProjectRole.OWNER);
     }
 

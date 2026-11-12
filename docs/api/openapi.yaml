@@ -6,6 +6,74 @@ servers:
 - url: http://localhost
   description: Generated server url
 paths:
+  /api/v1/roles/{roleId}/config-versions:
+    get:
+      tags:
+      - role-controller
+      operationId: listConfigVersions
+      parameters:
+      - name: roleId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PageResponseConfigVersionResponse"
+    post:
+      tags:
+      - role-controller
+      operationId: createConfigVersion
+      parameters:
+      - name: roleId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateConfigVersionRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ConfigVersionResponse"
+  /api/v1/roles/{roleId}/config-versions/{versionNo}/activate:
+    post:
+      tags:
+      - role-controller
+      operationId: activate
+      parameters:
+      - name: roleId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: versionNo
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ConfigVersionResponse"
   /api/v1/projects:
     get:
       tags:
@@ -47,11 +115,54 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/ProjectResponse"
+  /api/v1/projects/{projectId}/roles:
+    get:
+      tags:
+      - role-controller
+      operationId: list_1
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PageResponseRoleResponse"
+    post:
+      tags:
+      - role-controller
+      operationId: create_1
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRoleRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/RoleResponse"
   /api/v1/projects/{projectId}/documents:
     get:
       tags:
       - document-controller
-      operationId: list_1
+      operationId: list_2
       parameters:
       - name: projectId
         in: path
@@ -90,7 +201,7 @@ paths:
     post:
       tags:
       - document-controller
-      operationId: create_1
+      operationId: create_2
       parameters:
       - name: projectId
         in: path
@@ -115,7 +226,7 @@ paths:
     get:
       tags:
       - credential-controller
-      operationId: list_2
+      operationId: list_3
       parameters:
       - name: projectId
         in: path
@@ -486,6 +597,25 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/VersionResponse"
+  /api/v1/roles/{roleId}:
+    get:
+      tags:
+      - role-controller
+      operationId: get_1
+      parameters:
+      - name: roleId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/RoleResponse"
   /api/v1/me:
     get:
       tags:
@@ -502,7 +632,7 @@ paths:
     get:
       tags:
       - document-controller
-      operationId: get_1
+      operationId: get_2
       parameters:
       - name: documentId
         in: path
@@ -519,6 +649,105 @@ paths:
                 $ref: "#/components/schemas/DocumentResponse"
 components:
   schemas:
+    ContextDocument:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+          - REQUIREMENTS
+          - ARCHITECTURE
+          - API_CONTRACT
+          - ADR
+        mode:
+          type: string
+          enum:
+          - FULL
+          - SUMMARY
+        required:
+          type: boolean
+      required:
+      - mode
+      - type
+    ContextProfile:
+      type: object
+      properties:
+        documents:
+          type: array
+          items:
+            $ref: "#/components/schemas/ContextDocument"
+        includeUnapproved:
+          type: boolean
+        recentMessages:
+          type: integer
+          format: int32
+          maximum: 100
+          minimum: 1
+      required:
+      - documents
+      - recentMessages
+    CreateConfigVersionRequest:
+      type: object
+      properties:
+        systemPrompt:
+          type: string
+          maxLength: 20000
+          minLength: 0
+        contextProfile:
+          $ref: "#/components/schemas/ContextProfile"
+        permissions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Permission"
+          maxItems: 60
+          minItems: 0
+      required:
+      - contextProfile
+      - permissions
+      - systemPrompt
+    Permission:
+      type: object
+      properties:
+        code:
+          type: string
+          enum:
+          - READ_DOCUMENT
+          - PROPOSE_DOCUMENT
+          - COMMENT_ON_VERSION
+          - READ_REPO
+          - EXPORT_PATCH
+          - PROPOSE_TASK
+        resourceType:
+          type: string
+          maxLength: 40
+          minLength: 0
+      required:
+      - code
+    ConfigVersionResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        roleId:
+          type: string
+          format: uuid
+        versionNo:
+          type: integer
+          format: int32
+        systemPrompt:
+          type: string
+        contextProfile:
+          $ref: "#/components/schemas/ContextProfile"
+        permissions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Permission"
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
     CreateProjectRequest:
       type: object
       properties:
@@ -557,6 +786,58 @@ components:
         createdAt:
           type: string
           format: date-time
+    CreateRoleRequest:
+      type: object
+      properties:
+        code:
+          type: string
+          minLength: 1
+          pattern: "^[A-Z][A-Z0-9_]{1,39}$"
+        name:
+          type: string
+          maxLength: 100
+          minLength: 0
+        systemPrompt:
+          type: string
+          maxLength: 20000
+          minLength: 0
+        contextProfile:
+          $ref: "#/components/schemas/ContextProfile"
+        permissions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Permission"
+          maxItems: 60
+          minItems: 0
+      required:
+      - code
+      - contextProfile
+      - name
+      - permissions
+      - systemPrompt
+    ActiveConfig:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        versionNo:
+          type: integer
+          format: int32
+    RoleResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        name:
+          type: string
+        isBuiltin:
+          type: boolean
+        activeConfigVersion:
+          $ref: "#/components/schemas/ActiveConfig"
     CreateDocumentRequest:
       type: object
       properties:
@@ -847,6 +1128,15 @@ components:
           type: string
           maxLength: 2000
           minLength: 0
+    PageResponseConfigVersionResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ConfigVersionResponse"
+        nextCursor:
+          type: string
     PageResponseProjectResponse:
       type: object
       properties:
@@ -854,6 +1144,15 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ProjectResponse"
+        nextCursor:
+          type: string
+    PageResponseRoleResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/RoleResponse"
         nextCursor:
           type: string
     PageResponseDocumentResponse:
