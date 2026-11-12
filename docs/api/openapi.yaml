@@ -549,6 +549,30 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/UserResponse"
+  /api/v1/agents/{agentId}/conversations:
+    post:
+      tags:
+      - conversation-controller
+      operationId: create_4
+      parameters:
+      - name: agentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateConversationRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ConversationResponse"
   /api/v1/projects/{projectId}:
     get:
       tags:
@@ -702,6 +726,42 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/RoleResponse"
+  /api/v1/projects/{projectId}/conversations:
+    get:
+      tags:
+      - conversation-controller
+      operationId: list_5
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: agentId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: cursor
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PageResponseConversationResponse"
   /api/v1/me:
     get:
       tags:
@@ -733,6 +793,56 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/DocumentResponse"
+  /api/v1/conversations/{conversationId}:
+    get:
+      tags:
+      - conversation-controller
+      operationId: get_4
+      parameters:
+      - name: conversationId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ConversationResponse"
+  /api/v1/conversations/{conversationId}/messages:
+    get:
+      tags:
+      - conversation-controller
+      operationId: messages
+      parameters:
+      - name: conversationId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: afterSeq
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PageResponseMessageResponse"
 components:
   schemas:
     ContextDocument:
@@ -1261,6 +1371,45 @@ components:
           type: string
         displayName:
           type: string
+    CreateConversationRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 200
+          minLength: 0
+    ConversationResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        agentId:
+          type: string
+          format: uuid
+        taskId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        lastSeq:
+          type: integer
+          format: int32
+        stale:
+          type: boolean
+        staleDocumentTypes:
+          type: array
+          items:
+            type: string
+        activeRunId:
+          type: string
+          format: uuid
+        archivedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
     UpdateProjectRequest:
       type: object
       properties:
@@ -1350,6 +1499,15 @@ components:
             $ref: "#/components/schemas/CredentialResponse"
         nextCursor:
           type: string
+    PageResponseConversationResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ConversationResponse"
+        nextCursor:
+          type: string
     PageResponseAgentResponse:
       type: object
       properties:
@@ -1421,5 +1579,40 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/CommentResponse"
+        nextCursor:
+          type: string
+    MessageResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        conversationId:
+          type: string
+          format: uuid
+        seq:
+          type: integer
+          format: int32
+        role:
+          type: string
+          enum:
+          - USER
+          - AGENT
+          - SYSTEM
+        content:
+          type: string
+        agentRunId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+    PageResponseMessageResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/MessageResponse"
         nextCursor:
           type: string
