@@ -117,7 +117,7 @@ class RunApiTest extends IntegrationTestBase {
                 .andExpect(jsonPath("$.items.length()").value(1));
         mvc.perform(get("/api/v1/runs/" + runId + "/snapshot").session(c.owner().session()))
                 .andExpect(status().isOk());
-        assertThat(jdbc.queryForObject("select count(*) from outbox_event where event_type = 'AgentRunSucceeded'", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(*) from outbox_event where event_type = 'AgentRunSucceeded' and aggregate_id = ?::uuid", Integer.class, runId)).isEqualTo(1);
     }
 
     @Test
@@ -195,11 +195,14 @@ class RunApiTest extends IntegrationTestBase {
         assertThat((String) JsonPath.read(permanent, "$.status")).isEqualTo("FAILED");
         assertThat((String) JsonPath.read(permanent, "$.errorCode")).isEqualTo("PROVIDER_BAD_REQUEST");
 
+        // consecutive unanswered user messages are merged into one turn, so each case gets its own conversation
+        c = new Ctx(c.owner(), c.pid(), c.agent(), conversation(c.owner(), c.agent()), c.cred());
         String transientFail = awaitTerminal(c.owner(), sendOk(c, "[fail-transient]"));
         assertThat((String) JsonPath.read(transientFail, "$.status")).isEqualTo("FAILED");
         assertThat((String) JsonPath.read(transientFail, "$.errorCode")).isEqualTo("PROVIDER_UNAVAILABLE");
         assertThat((Integer) JsonPath.read(transientFail, "$.attempt")).isEqualTo(4);
 
+        c = new Ctx(c.owner(), c.pid(), c.agent(), conversation(c.owner(), c.agent()), c.cred());
         String once = awaitTerminal(c.owner(), sendOk(c, "[fail-once]"));
         assertThat((String) JsonPath.read(once, "$.status")).isEqualTo("SUCCEEDED");
         assertThat((Integer) JsonPath.read(once, "$.attempt")).isEqualTo(2);
