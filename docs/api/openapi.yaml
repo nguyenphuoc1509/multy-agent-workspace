@@ -265,6 +265,49 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/CredentialResponse"
+  /api/v1/projects/{projectId}/agents:
+    get:
+      tags:
+      - agent-controller
+      operationId: list_4
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PageResponseAgentResponse"
+    post:
+      tags:
+      - agent-controller
+      operationId: create_3
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAgentRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AgentResponse"
   /api/v1/documents/{documentId}/versions:
     get:
       tags:
@@ -597,11 +640,54 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/VersionResponse"
+  /api/v1/agents/{agentId}:
+    get:
+      tags:
+      - agent-controller
+      operationId: get_1
+      parameters:
+      - name: agentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AgentResponse"
+    patch:
+      tags:
+      - agent-controller
+      operationId: update_1
+      parameters:
+      - name: agentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAgentRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AgentResponse"
   /api/v1/roles/{roleId}:
     get:
       tags:
       - role-controller
-      operationId: get_1
+      operationId: get_2
       parameters:
       - name: roleId
         in: path
@@ -632,7 +718,7 @@ paths:
     get:
       tags:
       - document-controller
-      operationId: get_2
+      operationId: get_3
       parameters:
       - name: documentId
         in: path
@@ -928,6 +1014,79 @@ components:
         revokedAt:
           type: string
           format: date-time
+    AgentParams:
+      type: object
+      properties:
+        maxOutputTokens:
+          type: integer
+          format: int32
+          maximum: 200000
+          minimum: 1
+        maxRunSeconds:
+          type: integer
+          format: int32
+          maximum: 3600
+          minimum: 1
+        maxContextTokens:
+          type: integer
+          format: int32
+          maximum: 2000000
+          minimum: 1000
+    CreateAgentRequest:
+      type: object
+      properties:
+        roleId:
+          type: string
+          format: uuid
+        name:
+          type: string
+          maxLength: 100
+          minLength: 0
+        provider:
+          type: string
+          maxLength: 40
+          minLength: 0
+        model:
+          type: string
+          maxLength: 100
+          minLength: 0
+        params:
+          $ref: "#/components/schemas/AgentParams"
+        credentialId:
+          type: string
+          format: uuid
+      required:
+      - model
+      - name
+      - provider
+      - roleId
+    AgentResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        roleId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        provider:
+          type: string
+        executorType:
+          type: string
+        model:
+          type: string
+        params:
+          $ref: "#/components/schemas/AgentParams"
+        credentialId:
+          type: string
+          format: uuid
+        isEnabled:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
     CreateVersionRequest:
       type: object
       properties:
@@ -1128,6 +1287,24 @@ components:
           type: string
           maxLength: 2000
           minLength: 0
+    UpdateAgentRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 100
+          minLength: 0
+        model:
+          type: string
+          maxLength: 100
+          minLength: 0
+        params:
+          $ref: "#/components/schemas/AgentParams"
+        credentialId:
+          type: string
+          format: uuid
+        isEnabled:
+          type: boolean
     PageResponseConfigVersionResponse:
       type: object
       properties:
@@ -1171,6 +1348,15 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/CredentialResponse"
+        nextCursor:
+          type: string
+    PageResponseAgentResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AgentResponse"
         nextCursor:
           type: string
     PageResponseVersionSummaryResponse:
