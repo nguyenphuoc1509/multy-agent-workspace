@@ -3,7 +3,10 @@
 Monorepo: `backend/` (Spring Boot), `frontend/` (Next.js, added with the MVP), `docs/` (ADRs, reports, `api/openapi.yaml` = the contract between them), `docker-compose.yml` (local PostgreSQL).
 All backend commands below run from `backend/`.
 
-## Backend (Milestones 0-2)
+## Trying the MVP
+See **docs/TRIAL.md** (backend + frontend, step by step, with and without a real Anthropic key).
+
+## Backend (Milestones 0-3)
 
 Backend for the multi-agent software development workspace. Implements **M0** (skeleton, session login, CSRF,
 projects) and **M1** (documents core, no AI) of `BE-agent-brief.txt` (v1.0).
