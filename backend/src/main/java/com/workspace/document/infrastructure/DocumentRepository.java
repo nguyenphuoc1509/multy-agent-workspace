@@ -19,6 +19,9 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
     @Query("select d from Document d where d.id = :id")
     Optional<Document> findByIdForUpdate(@Param("id") UUID id);
 
+    List<Document> findByProjectIdAndTypeInAndCurrentApprovedVersionIdIsNotNullOrderByCreatedAtAscIdAsc(
+            UUID projectId, java.util.Collection<DocumentType> types);
+
     /** Gate check: at least one document of that type in the project has an approved version. */
     boolean existsByProjectIdAndTypeAndCurrentApprovedVersionIdIsNotNull(UUID projectId, DocumentType type);
 

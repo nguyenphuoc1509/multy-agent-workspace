@@ -40,9 +40,9 @@ class ArchitectureTest {
         ALLOWED.put("credential", Set.of("identity", "project", "audit", "event", "llm", "shared")); // ADR-003
         ALLOWED.put("agent", Set.of("identity", "project", "credential", "document", "audit", "event", "shared")); // ADR-004
         ALLOWED.put("attention", Set.of("project", "event", "shared"));
-        ALLOWED.put("conversation", Set.of("identity", "project", "agent", "audit", "event", "shared")); // ADR-005
+        ALLOWED.put("conversation", Set.of("identity", "project", "agent", "context", "audit", "event", "shared")); // ADR-005 (context = history port)
         ALLOWED.put("llm", Set.of("shared"));
-        ALLOWED.put("context", Set.of("document", "agent", "shared"));
+        ALLOWED.put("context", Set.of("identity", "project", "document", "agent", "shared")); // ADR-005
         ALLOWED.put("run", Set.of("context", "llm", "agent", "credential", "conversation", "audit", "event", "shared"));
         ALLOWED.put("task", Set.of("run", "context", "agent", "document", "audit", "event", "shared"));
         ALLOWED.put("workflow", Set.of("document", "conversation", "agent", "project", "audit", "event", "shared"));
