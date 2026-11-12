@@ -26,7 +26,7 @@ class OpenApiExportTest extends IntegrationTestBase {
 
         assertThat(yaml).contains("/api/v1/projects").contains("/api/v1/auth/login").contains("/api/v1/me");
 
-        Path out = Path.of("docs", "api", "openapi.yaml");
+        Path out = Path.of("..", "docs", "api", "openapi.yaml"); // repo root docs/, tests run from backend/
         Files.createDirectories(out.getParent());
         Files.writeString(out, yaml);
     }

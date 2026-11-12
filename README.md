@@ -1,4 +1,9 @@
-# workspace-backend (Milestones 0-1)
+# Multi-AI Software Development Workspace
+
+Monorepo: `backend/` (Spring Boot), `frontend/` (Next.js, added with the MVP), `docs/` (ADRs, reports, `api/openapi.yaml` = the contract between them), `docker-compose.yml` (local PostgreSQL).
+All backend commands below run from `backend/`.
+
+## Backend (Milestones 0-2)
 
 Backend for the multi-agent software development workspace. Implements **M0** (skeleton, session login, CSRF,
 projects) and **M1** (documents core, no AI) of `BE-agent-brief.txt` (v1.0).
@@ -8,13 +13,14 @@ projects) and **M1** (documents core, no AI) of `BE-agent-brief.txt` (v1.0).
 > build) and `docs/reports/M1-report.md`. Next: M2 (credentials, roles, agents).
 
 ## Requirements
-- JDK 21 (`java.version` in `pom.xml`; CI uses the same)
+- JDK 21 (`java.version` in `backend/pom.xml`; CI uses the same)
 - Maven 3.9+
 - Docker (local PostgreSQL via compose, and Testcontainers for the tests)
 
 ## Run locally
 ```bash
-docker compose up -d                     # PostgreSQL 16 only
+docker compose up -d                     # PostgreSQL 16 only (run from the repo root)
+cd backend
 export WORKSPACE_BOOTSTRAP_EMAIL=you@example.com
 export WORKSPACE_BOOTSTRAP_PASSWORD='at-least-12-chars-max-72-bytes'
 mvn spring-boot:run
@@ -32,7 +38,6 @@ The application and tests use UTC as the JVM default time zone. This avoids Post
 | `WORKSPACE_BOOTSTRAP_EMAIL` / `_PASSWORD` / `_DISPLAY_NAME` | empty / empty / `Owner` | first user |
 | `WORKSPACE_COOKIE_SECURE` | `false` | set `true` everywhere except localhost |
 | `WORKSPACE_OPENAPI_ENABLED` | `false` | exposes `/v3/api-docs*` (the export test enables it itself) |
-
 | `WORKSPACE_MASTER_KEY` | none (**required**) | encrypts provider API keys (AES-256-GCM); the app refuses to start without it |
 | `WORKSPACE_LLM_FAKE` | `false` | `true` = scripted fake provider, no network (demos without a real key) |
 
@@ -59,4 +64,4 @@ mvn verify          # needs Docker; real PostgreSQL through Testcontainers, no H
 
 ## Layout
 `com.workspace.<module>.{web,application,domain,infrastructure,published}`; other modules may only use
-`published`. Modules so far: `shared`, `identity`, `project`, `audit`, `event`, `document`.
+`published`. Modules so far: `shared`, `identity`, `project`, `audit`, `event`, `document`, `credential`, `llm`.

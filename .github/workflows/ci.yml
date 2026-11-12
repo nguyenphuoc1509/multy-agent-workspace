@@ -28,7 +28,9 @@ jobs:
           distribution: temurin
           java-version: '21'   # keep equal to <java.version> in pom.xml
           cache: maven
-      - name: mvn verify
+          cache-dependency-path: backend/pom.xml
+      - name: mvn verify (backend)
+        working-directory: backend
         run: mvn -B -ntp verify
       # OpenApiExportTest rewrites docs/api/openapi.yaml during mvn verify.
       - name: Commit regenerated docs/api/openapi.yaml (pull requests only)
@@ -50,8 +52,8 @@ jobs:
         with:
           name: surefire-reports
           path: |
-            target/surefire-reports/
-            target/failsafe-reports/
+            backend/target/surefire-reports/
+            backend/target/failsafe-reports/
           if-no-files-found: ignore
       - name: Upload generated OpenAPI
         if: always()
