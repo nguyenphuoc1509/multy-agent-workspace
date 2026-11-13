@@ -8,6 +8,11 @@ public interface LlmProvider {
     /** Provider code as stored in the database, e.g. ANTHROPIC. */
     String code();
 
+    /** False for providers that run locally under the user's own login (Claude Code CLI): no stored credential. */
+    default boolean requiresCredential() {
+        return true;
+    }
+
     /** Cheap call that proves the key works. Must not log or retain the key. */
     KeyValidation validate(ApiKey key, String modelOrNull);
 

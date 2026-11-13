@@ -25,6 +25,15 @@ npm run dev
 ```
 Open http://localhost:3000 and sign in with the e-mail/password above.
 
+## Optional: use your Claude login instead of an API key (Claude Code CLI)
+Needs the official CLI installed and logged in on the same machine (`claude` works in a terminal). Start the backend with
+```powershell
+$env:WORKSPACE_LLM_CLAUDE_CODE_ENABLED="true"
+```
+then create an agent with provider **Claude Code (local login)** (model e.g. `sonnet`); it needs no credential.
+The CLI is started per run with all tools disabled, no MCP/skills/settings, in an empty temp folder: the agent can only produce text.
+Check Anthropic's current terms for your plan before relying on this for anything beyond personal use. Limits: no token cap per run, `maxOutputTokens` is not enforced, history is sent as one transcript.
+
 ## 4. Walk through
 1. **Projects** > create a project.
 2. **Credentials** > add a key. With `WORKSPACE_LLM_FAKE=true` any text works except one starting with `sk-bad` (rejected). With a real key, it is validated against Anthropic.

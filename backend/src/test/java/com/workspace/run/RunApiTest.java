@@ -252,6 +252,24 @@ class RunApiTest extends IntegrationTestBase {
     }
 
     @Test
+    void claudeCodeAgents_takeNoCredential_andFailCleanlyWhenTheProviderIsOff() throws Exception {
+        Ctx c = setup(true);
+        String roles = mvc.perform(get("/api/v1/projects/" + c.pid() + "/roles").session(c.owner().session()))
+                .andReturn().getResponse().getContentAsString();
+        List<String> ids = JsonPath.read(roles, "$.items[?(@.code=='QA')].id");
+        String base = "{\"roleId\":\"%s\",\"name\":\"%s\",\"provider\":\"CLAUDE_CODE\",\"model\":\"sonnet\"%s}";
+        mvc.perform(as(post("/api/v1/projects/" + c.pid() + "/agents"), c.owner()).contentType(MediaType.APPLICATION_JSON)
+                .content(base.formatted(ids.get(0), "bad", ",\"credentialId\":\"" + c.cred() + "\""))).andExpect(status().isBadRequest());
+        String agentId = JsonPath.read(mvc.perform(as(post("/api/v1/projects/" + c.pid() + "/agents"), c.owner())
+                .contentType(MediaType.APPLICATION_JSON).content(base.formatted(ids.get(0), "cc", "")))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(), "$.id");
+        Ctx cc = new Ctx(c.owner(), c.pid(), agentId, conversation(c.owner(), agentId), null);
+        String done = awaitTerminal(c.owner(), sendOk(cc, "hi")); // workspace.llm.claude-code.enabled is off in tests
+        assertThat((String) JsonPath.read(done, "$.status")).isEqualTo("FAILED");
+        assertThat((String) JsonPath.read(done, "$.errorCode")).isEqualTo("PROVIDER_NOT_CONFIGURED");
+    }
+
+    @Test
     void validation() throws Exception {
         Ctx c = setup(true);
         assertThat(mvc.perform(as(post("/api/v1/conversations/" + c.conv() + "/messages"), c.owner())

@@ -28,7 +28,7 @@ import tools.jackson.databind.json.JsonMapper;
 public class AgentService {
 
     private static final Set<ProjectRole> OWNER_ONLY = Set.of(ProjectRole.OWNER);
-    private static final Set<String> PROVIDERS = Set.of("ANTHROPIC"); // extend only when an adapter exists
+    private static final Set<String> PROVIDERS = Set.of("ANTHROPIC", "CLAUDE_CODE"); // extend only when an adapter exists
 
     private final AgentRepository agents;
     private final RoleDefinitionRepository roles;
@@ -112,6 +112,7 @@ public class AgentService {
 
     private void checkCredential(UUID projectId, String provider, UUID credentialId) {
         if (credentialId == null) return;
+        if (provider.equals("CLAUDE_CODE")) throw invalid("credentialId", "Claude Code agents use your local login, not a credential");
         CredentialDirectory.Info c = credentials.find(credentialId).filter(i -> i.projectId().equals(projectId))
                 .orElseThrow(() -> invalid("credentialId", "Credential not found in this project"));
         if (c.revoked()) {
