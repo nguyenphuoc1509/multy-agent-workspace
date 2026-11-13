@@ -105,16 +105,24 @@ class RunExecutor {
             block(runId, BlockReason.AGENT_DISABLED);
             return;
         }
-        if (r.credentialId() == null) {
-            block(runId, BlockReason.CREDENTIAL_REVOKED);
+        LlmProvider provider = providers.find(rt.agent().provider()).orElse(null);
+        if (provider == null) {
+            fail(runId, "PROVIDER_NOT_CONFIGURED");
             return;
         }
-        Optional<ApiKey> revealed = keys.reveal(r.credentialId());
-        if (revealed.isEmpty()) {
-            block(runId, BlockReason.CREDENTIAL_REVOKED);
-            return;
+        ApiKey key = new ApiKey(""); // providers that run locally (Claude Code CLI) need no key
+        if (provider.requiresCredential()) {
+            if (r.credentialId() == null) {
+                block(runId, BlockReason.CREDENTIAL_REVOKED);
+                return;
+            }
+            Optional<ApiKey> revealed = keys.reveal(r.credentialId());
+            if (revealed.isEmpty()) {
+                block(runId, BlockReason.CREDENTIAL_REVOKED);
+                return;
+            }
+            key = revealed.get();
         }
-        ApiKey key = revealed.get();
 
         MessageInfo trigger = conversations.findMessage(r.triggerMessageId())
                 .orElseThrow(() -> new IllegalStateException("TRIGGER_MESSAGE_MISSING"));
@@ -141,12 +149,6 @@ class RunExecutor {
         int seconds = params.maxRunSeconds() != null ? params.maxRunSeconds() : defaultMaxRunSeconds;
         long deadline = System.nanoTime() + seconds * 1_000_000_000L;
         BooleanSupplier abort = () -> cancel.get() || System.nanoTime() > deadline;
-
-        LlmProvider provider = providers.find(rt.agent().provider()).orElse(null);
-        if (provider == null) {
-            fail(runId, "PROVIDER_NOT_CONFIGURED");
-            return;
-        }
 
         bus.publish(runId, "run.started", Map.of("runId", runId.toString(), "snapshotId", first.snapshotId().toString(),
                 "model", r.model()));

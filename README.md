@@ -42,6 +42,7 @@ The application and tests use UTC as the JVM default time zone. This avoids Post
 | `WORKSPACE_COOKIE_SECURE` | `false` | set `true` everywhere except localhost |
 | `WORKSPACE_OPENAPI_ENABLED` | `false` | exposes `/v3/api-docs*` (the export test enables it itself) |
 | `WORKSPACE_MASTER_KEY` | none (**required**) | encrypts provider API keys (AES-256-GCM); the app refuses to start without it |
+| `WORKSPACE_LLM_CLAUDE_CODE_ENABLED` | `false` | `true` = agents may use provider CLAUDE_CODE (runs the local `claude` CLI under your login) |
 | `WORKSPACE_LLM_FAKE` | `false` | `true` = scripted fake provider, no network (demos without a real key) |
 
 Generate a master key once and keep it out of git: `openssl rand -base64 32`
